@@ -17,7 +17,6 @@ SYSTEM_PROMPT = (
     "impairment when CrCl is mentioned. Keep answers practical for clinicians."
 )
 
-# Demo broken model: fail once, do not retry auth/not-found errors.
 _NO_RETRY_STATUSES = {401, 403, 404, 422}
 
 
@@ -48,8 +47,8 @@ def call_chat_completion(
 
     models_to_try: list[tuple[str, str]] = []
     if simulate_model_failure:
-        logs.append("   ⚠️  PRIMARY MODEL FAILURE DEMO")
-        logs.append(f"   Probing unavailable model: {settings.tfy_broken_model}")
+        logs.append("  [DEMO] Primary model failure simulation")
+        logs.append(f"  Probing unavailable model: {settings.tfy_broken_model}")
         models_to_try.append(
             (settings.tfy_broken_model, "intentional primary failure for demo")
         )
@@ -78,7 +77,7 @@ def call_chat_completion(
         is_demo_broken = model_name == settings.tfy_broken_model
         max_attempts = 1 if is_demo_broken else settings.max_retries
 
-        logs.append(f"   Routing target: {model_name} ({reason})")
+        logs.append(f"  Route: {model_name} ({reason})")
 
         header_variants = [base_headers | guardrail_header]
         if guardrail_header:
@@ -86,7 +85,7 @@ def call_chat_completion(
 
         for attempt in range(1, max_attempts + 1):
             if not is_demo_broken:
-                logs.append(f"   Attempt {attempt}/{max_attempts}: calling gateway...")
+                logs.append(f"  Attempt {attempt}/{max_attempts}")
 
             response = None
             for header_idx, headers in enumerate(header_variants):
@@ -98,7 +97,7 @@ def call_chat_completion(
                         timeout=45,
                     )
                 except requests.RequestException as exc:
-                    logs.append(f"   ❌ Network error: {exc}")
+                    logs.append(f"  [ERR] Network error: {exc}")
                     response = None
                     break
 
@@ -110,9 +109,7 @@ def call_chat_completion(
                     and header_idx == 0
                     and _is_guardrail_config_error(response)
                 ):
-                    logs.append(
-                        "   ⚠️  TrueFoundry guardrail slug not found — retrying without header"
-                    )
+                    logs.append("  [WARN] Guardrail slug not found — retrying without header")
                     continue
 
                 break
@@ -121,41 +118,42 @@ def call_chat_completion(
                 if attempt < max_attempts:
                     time.sleep(settings.retry_backoff_seconds * attempt)
                 continue
+
             if response.status_code == 200:
                 answer = response.json()["choices"][0]["message"]["content"]
                 if is_demo_broken:
-                    logs.append("   ✅ Unexpected success on broken model")
+                    logs.append("  [OK] Unexpected success on broken model")
                 elif simulate_model_failure and model_name == settings.tfy_virtual_model:
-                    logs.append("   ✅ Gateway fallback / virtual model recovered successfully")
+                    logs.append("  [OK] Gateway fallback recovered successfully")
                 else:
-                    logs.append("   ✅ Primary route succeeded")
+                    logs.append("  [OK] Primary route succeeded")
                 return GatewayResult(True, answer, logs)
 
             body = _safe_json(response)
             if _is_guardrail_block(response.status_code, body):
                 message = parse_guardrail_error(body)
-                logs.append(f"   🚫 {message}")
+                logs.append(f"  [BLOCKED] {message}")
                 return GatewayResult(False, message, logs, blocked_by_guardrail=True)
 
             err_msg = body.get("error", {}).get("message", response.text[:180])
             if is_demo_broken:
-                logs.append(f"   ✅ Primary unavailable as expected ({response.status_code})")
-                logs.append("   🔄 Failover engaged → switching to virtual model")
+                logs.append(f"  [OK] Primary unavailable as expected ({response.status_code})")
+                logs.append("  [FAILOVER] Switching to virtual model")
                 break
 
-            logs.append(f"   ❌ HTTP {response.status_code}: {err_msg}")
+            logs.append(f"  [ERR] HTTP {response.status_code}: {err_msg}")
 
             if response.status_code in _NO_RETRY_STATUSES:
                 break
 
             if attempt < max_attempts:
                 sleep_for = settings.retry_backoff_seconds * attempt
-                logs.append(f"   ⏳ Backing off {sleep_for:.1f}s before retry...")
+                logs.append(f"  [WAIT] Backing off {sleep_for:.1f}s")
                 time.sleep(sleep_for)
 
-    logs.append("🚨 ALL GATEWAY ATTEMPTS FAILED — graceful degradation")
+    logs.append("[ERR] All gateway attempts failed — graceful degradation")
     fallback_text = (
-        "⚠️ Service temporarily unavailable.\n"
+        "Service temporarily unavailable.\n"
         "Please consult WHO AWaRe guidelines: https://aware.essentialmeds.org"
     )
     return GatewayResult(False, fallback_text, logs)

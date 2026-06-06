@@ -62,16 +62,16 @@ async def _mcp_openfda_lookup(
     logs: list[str] = []
 
     if not settings.tfy_mcp_openfda_url:
-        logs.append("   ℹ️  MCP URL not set — using OpenFDA HTTP fallback")
+        logs.append("  [INFO] MCP URL not set — using OpenFDA HTTP fallback")
         text = _direct_openfda_lookup(drug_name)
-        logs.append("   ✅ OpenFDA data retrieved (direct HTTP)")
+        logs.append("  [OK] OpenFDA data retrieved (direct HTTP)")
         return text, logs
 
     try:
         from fastmcp import Client
         from fastmcp.client.transports import StreamableHttpTransport
     except ImportError as exc:
-        logs.append(f"   ⚠️  fastmcp not installed ({exc}) — using direct OpenFDA HTTP")
+        logs.append(f"  [WARN] fastmcp not installed ({exc})")
         return _direct_openfda_lookup(drug_name), logs
 
     headers = {"Authorization": f"Bearer {settings.tfy_api_key}"}
@@ -87,22 +87,21 @@ async def _mcp_openfda_lookup(
         headers=headers,
     )
 
-    logs.append(f"   MCP URL: {settings.tfy_mcp_openfda_url}")
-    logs.append(f"   Tool: {tool_name}({{'drug_name': '{drug_name}'}})")
+    logs.append(f"  MCP URL: {settings.tfy_mcp_openfda_url}")
 
     async with Client(transport) as client:
         tools = await client.list_tools()
         available = [tool.name for tool in tools]
-        logs.append(f"   Tools visible via gateway: {', '.join(available) or '(none)'}")
+        logs.append(f"  Tools: {', '.join(available) or '(none)'}")
 
         chosen_tool = tool_name if tool_name in available else (available[0] if available else "")
         if not chosen_tool:
-            logs.append("   ❌ No MCP tools available — degrading to direct OpenFDA HTTP")
+            logs.append("  [WARN] No MCP tools — degrading to direct OpenFDA HTTP")
             return _direct_openfda_lookup(drug_name), logs
 
         result = await client.call_tool(chosen_tool, {"drug_name": drug_name})
         text = _stringify_mcp_result(result)
-        logs.append("   ✅ MCP tool call succeeded")
+        logs.append("  [OK] MCP tool call succeeded")
         return text[:500], logs
 
 
@@ -128,7 +127,7 @@ def lookup_openfda(
     logs: list[str] = []
 
     if simulate_tool_failure:
-        logs.append("   ⚠️  TOOL FAILURE SIMULATED — MCP/OpenFDA unavailable")
+        logs.append("  [DEMO] Tool failure simulated — OpenFDA unavailable")
         return "FDA tool unavailable (simulated failure)", logs
 
     try:
@@ -138,14 +137,15 @@ def lookup_openfda(
         logs.extend(mcp_logs)
         return text, logs
     except Exception as exc:
-        logs.append(f"   ❌ MCP Gateway error: {exc}")
-        logs.append("   ♻️  Graceful degradation → direct OpenFDA HTTP fallback")
+        short_err = str(exc).split("\n")[0][:120]
+        logs.append(f"  [ERR] MCP Gateway: {short_err}")
+        logs.append("  [FAILOVER] Direct OpenFDA HTTP fallback")
         try:
             text = _direct_openfda_lookup(drug_name)
-            logs.append("   ✅ Direct OpenFDA fallback succeeded")
+            logs.append("  [OK] Direct OpenFDA fallback succeeded")
             return text, logs
         except Exception as fallback_exc:
-            logs.append(f"   ❌ Direct OpenFDA fallback failed: {fallback_exc}")
+            logs.append(f"  [ERR] OpenFDA fallback failed: {fallback_exc}")
             return "FDA data unavailable — continuing with AWaRe guidelines only", logs
 
 
