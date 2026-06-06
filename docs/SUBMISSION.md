@@ -10,6 +10,11 @@
 
 Resilient clinical antibiotic agent — survives model outages, tool failures, and unsafe patient input.
 
+## Links
+
+- **GitHub:** https://github.com/prakash023-hub/pharma-resilient-agent
+- **Demo video:** YOUR_VIDEO_URL (add after recording)
+
 ## Problem
 
 Antibiotic stewardship AI breaks in production when:
@@ -18,68 +23,32 @@ Antibiotic stewardship AI breaks in production when:
 - OpenFDA or other tools fail mid-request
 - PII accidentally enters the clinical prompt
 
-Clinicians need **reliable** guidance, not demos that crash on the first failure.
-
 ## Solution
 
 PharmaGuard is a production-style resilient agent that:
 
-1. **Guardrails** — blocks PII/PHI (local pre-check + TrueFoundry LLM input guardrails)
-2. **MCP Gateway** — fetches FDA drug labels via governed OpenFDA tool
-3. **AI Gateway** — routes through virtual model with priority fallback (Nova → Llama)
-4. **Graceful degradation** — continues with AWaRe guidelines when tools or models fail
+1. **Guardrails** — blocks PII/PHI (local pre-check + TrueFoundry guardrails)
+2. **MCP Gateway** — OpenFDA drug lookup with HTTP fallback
+3. **AI Gateway** — virtual model with priority fallback (Nova → Llama)
+4. **Graceful degradation** — AWaRe guidelines when tools or models fail
 
 ## TrueFoundry stack
 
 | Component | Implementation |
 |-----------|----------------|
 | **AI Gateway** | AWS Bedrock us-east-1 — Nova Micro + Llama4-Scout |
-| **Virtual Model** | `pharma-resilient-gateway/primary-nova` — priority routing |
-| **MCP Gateway** | `openfda-drug-server` → remote `https://mcp.openfda.gov/mcp` |
-| **Guardrails** | `pharma-safety-guardrails/pii-redact-pharma` — PII/PHI MUTATE |
-| **Observability** | Gateway request logs, routing events, tool audit trail |
+| **Virtual Model** | `pharma-resilient-gateway/primary-nova` |
+| **MCP Gateway** | `openfda-drug-server` → `https://mcp.openfda.gov/mcp` |
+| **Guardrails** | `pharma-safety-guardrails/pii-redact-pharma` |
 
-## Resilience demos (all real — not simulated log text)
+## Resilience demos
 
 | Scenario | Trigger | Result |
 |----------|---------|--------|
-| Normal | Standard clinical query | MCP + gateway → renal-adjusted recommendation |
-| Model failure | Demo checkbox | Broken model unavailable → virtual model recovers |
-| Tool failure | Demo checkbox | FDA unavailable → AWaRe-only answer |
-| PII block | Query with SSN | Blocked before model/tool execution |
-| Total outage | All retries fail | WHO AWaRe fallback link |
-
-## Example queries
-
-```
-Amoxicillin for UTI in 65yo patient with CrCl 45
-```
-
-```
-Best antibiotic for pneumonia in penicillin-allergic patient
-```
-
-PII test:
-
-```
-Amoxicillin for UTI, patient SSN 123-45-6789
-```
-
-## Architecture
-
-```
-Gradio UI
-  → Guardrails (local + TrueFoundry)
-  → MCP Gateway (OpenFDA lookup_drug_label)
-  → AI Gateway Virtual Model (Bedrock Nova → Llama fallback)
-  → Clinical recommendation + AWaRe degradation path
-```
-
-## Links
-
-- **GitHub**: `<ADD YOUR REPO URL>`
-- **Demo video**: `<ADD YOUTUBE/LOOM URL>`
-- **Live demo**: `<OPTIONAL GRADIO SHARE URL>`
+| Normal | No checkboxes | Full clinical answer |
+| Model failure | Model checkbox | Fallback recovers |
+| Tool failure | Tool checkbox | AWaRe-only answer |
+| PII block | SSN in query | Blocked before LLM |
 
 ## Team
 
