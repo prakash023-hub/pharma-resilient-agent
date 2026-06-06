@@ -33,9 +33,10 @@ PharmaGuard is a production-style resilient agent that:
 
 | Component | Implementation |
 |-----------|----------------|
-| **AI Gateway** | Virtual model `pharma-resilient-gateway/primary-nova`, retries, priority fallback |
-| **MCP Gateway** | `lookup_drug_label` OpenFDA tool via streamable HTTP MCP proxy |
-| **Guardrails** | LLM input + MCP pre/post hooks via `X-TFY-GUARDRAILS` |
+| **AI Gateway** | AWS Bedrock us-east-1 — Nova Micro + Llama4-Scout |
+| **Virtual Model** | `pharma-resilient-gateway/primary-nova` — priority routing |
+| **MCP Gateway** | `openfda-drug-server` → remote `https://mcp.openfda.gov/mcp` |
+| **Guardrails** | `pharma-safety-guardrails/pii-redact-pharma` — PII/PHI MUTATE |
 | **Observability** | Gateway request logs, routing events, tool audit trail |
 
 ## Resilience demos (all real — not simulated log text)
