@@ -14,109 +14,52 @@ import gradio as gr
 from src.agent_core import run_pharma_agent
 from src.formatting import format_clinical_answer, empty_clinical_panel
 
+# RULE: never white/light text on light background — dark text + colored panels
 CSS = """
 .gradio-container {
     max-width: 1240px !important;
-    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+    background: #e2e8f0 !important;
 }
 footer { display: none !important; }
 
-.pg-header {
-    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 55%, #0f3460 100%);
-    border-radius: 18px;
-    padding: 30px 28px 24px;
-    margin-bottom: 18px;
-    border: 1px solid #3b82f6;
-    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.25);
-}
-.pg-title { color: #fff; font-size: 2.1rem; margin: 0; font-weight: 800; letter-spacing: -0.02em; }
-.pg-subtitle { color: #cbd5e1; margin: 10px 0 0; font-size: 1rem; }
-.pg-badges { display: flex; justify-content: center; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
-.pg-badge {
-    padding: 6px 14px;
-    border-radius: 999px;
-    font-size: 0.78rem;
-    font-weight: 600;
-    border: 1px solid rgba(255,255,255,0.12);
-}
-.pg-cards {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-    margin: 14px 0 6px;
-}
-@media (max-width: 900px) { .pg-cards { grid-template-columns: repeat(2, 1fr); } }
-.pg-card {
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 12px;
-    padding: 12px 14px;
-    text-align: left;
-}
-.pg-card .icon { font-size: 1.3rem; margin-bottom: 4px; }
-.pg-card .name { color: #f8fafc; font-weight: 700; font-size: 0.82rem; }
-.pg-card .desc { color: #94a3b8; font-size: 0.72rem; margin-top: 2px; line-height: 1.35; }
-
-.pg-section-title {
+/* All form labels — dark */
+.gradio-container label span,
+.gradio-container .block label {
     color: #0f172a !important;
-    font-size: 1.05rem;
-    font-weight: 700;
-    margin: 0 0 10px 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.pg-hint {
-    color: #64748b;
-    font-size: 0.84rem;
-    margin: 8px 0 0;
-    line-height: 1.45;
-}
-.pg-panel-label {
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px 10px 0 0;
-    padding: 10px 14px;
-    color: #334155;
-    font-weight: 600;
-    font-size: 0.9rem;
-    margin-bottom: -1px;
+    font-weight: 600 !important;
 }
 
-#pg-logs textarea {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
-    font-size: 12.5px !important;
-    line-height: 1.55 !important;
-    background: #0f172a !important;
-    color: #e2e8f0 !important;
-    border-radius: 0 0 10px 10px !important;
-    border: 1px solid #334155 !important;
-    min-height: 420px !important;
+/* Query input */
+.gradio-container textarea,
+.gradio-container input[type="text"] {
+    color: #0f172a !important;
+    background: #fef3c7 !important;
+    border: 2px solid #d97706 !important;
 }
 
-.pg-footer {
-    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
-    border-radius: 14px;
-    padding: 18px 20px;
-    margin-top: 18px;
-    border: 1px solid #e2e8f0;
+/* Logs — light green panel, dark text */
+#pg-logs textarea, #pg-logs input {
+    font-family: Menlo, Monaco, Consolas, monospace !important;
+    font-size: 13px !important;
+    line-height: 1.6 !important;
+    background: #ecfdf5 !important;
+    color: #064e3b !important;
+    border: 2px solid #059669 !important;
+    border-radius: 0 0 8px 8px !important;
+    min-height: 400px !important;
 }
-.pg-footer .label {
-    color: #475569;
-    font-size: 0.72rem;
-    margin: 0;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-weight: 700;
-}
-.pg-footer p { margin: 6px 0 0; color: #334155; font-size: 0.86rem; line-height: 1.5; }
-.pg-flow {
-    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
-    margin-top: 8px; font-size: 0.8rem; color: #475569;
-}
-.pg-flow span {
-    background: #fff; border: 1px solid #cbd5e1;
-    border-radius: 8px; padding: 4px 10px; font-weight: 600;
+
+/* Clinical answer — light blue panel, dark text */
+#pg-answer textarea, #pg-answer input {
+    font-family: Inter, Arial, sans-serif !important;
+    font-size: 15px !important;
+    line-height: 1.7 !important;
+    background: #dbeafe !important;
+    color: #1e3a8a !important;
+    border: 2px solid #2563eb !important;
+    border-radius: 0 0 8px 8px !important;
+    min-height: 400px !important;
+    font-weight: 500 !important;
 }
 """
 
@@ -136,57 +79,32 @@ def safe_run(query: str, simulate_model_failure: bool, simulate_tool_failure: bo
     except ValueError as exc:
         return (
             str(exc),
-            '<div style="color:#1e293b;padding:16px;"><strong>Configuration Error</strong><br>'
-            "Set <code>TFY_API_KEY</code> in your <code>.env</code> file.</div>",
+            "CONFIGURATION ERROR\n-------------------\n\nSet TFY_API_KEY in your .env file.",
         )
     except Exception as exc:
         return (
             f"Unexpected error: {exc}",
-            '<div style="color:#1e293b;padding:16px;"><strong>Error</strong><br>'
-            "Check logs and TrueFoundry connectivity.</div>",
+            "ERROR\n-----\n\nAgent failed. Check logs and TrueFoundry connectivity.",
         )
-
-
-def load_example(text: str):
-    return text
 
 
 with gr.Blocks(title="PharmaGuard | TrueFoundry Hackathon") as demo:
     gr.HTML(
         """
-        <div class="pg-header">
-            <h1 class="pg-title">💊 PharmaGuard Resilient Agent</h1>
-            <p class="pg-subtitle">
-                Clinical antibiotic stewardship · WHO AWaRe 2023 ·
-                TrueFoundry AI Gateway + MCP + Guardrails · AWS Bedrock
+        <div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);
+                    border-radius:14px;padding:22px;margin-bottom:14px;
+                    border:3px solid #1d4ed8;">
+            <h1 style="color:#fef08a;font-size:1.9rem;margin:0;font-weight:800;">
+                PharmaGuard Resilient Agent
+            </h1>
+            <p style="color:#bfdbfe;margin:8px 0 0;font-size:0.95rem;">
+                TrueFoundry Hackathon 2026 | AWaRe 2023 | AWS Bedrock
             </p>
-            <div class="pg-badges">
-                <span class="pg-badge" style="background:#14532d;color:#86efac;">✅ AI Gateway</span>
-                <span class="pg-badge" style="background:#1e3a8a;color:#93c5fd;">✅ MCP Gateway</span>
-                <span class="pg-badge" style="background:#4c1d95;color:#c4b5fd;">✅ Guardrails</span>
-                <span class="pg-badge" style="background:#7f1d1d;color:#fca5a5;">✅ Fallback</span>
-            </div>
-            <div class="pg-cards">
-                <div class="pg-card">
-                    <div class="icon">🛡️</div>
-                    <div class="name">Guardrails</div>
-                    <div class="desc">PII/PHI block · pharma-safety-guardrails</div>
-                </div>
-                <div class="pg-card">
-                    <div class="icon">🔧</div>
-                    <div class="name">MCP Tool</div>
-                    <div class="desc">openfda-drug-server · HTTP fallback</div>
-                </div>
-                <div class="pg-card">
-                    <div class="icon">🤖</div>
-                    <div class="name">Virtual Model</div>
-                    <div class="desc">Nova Micro → Llama4-Scout fallback</div>
-                </div>
-                <div class="pg-card">
-                    <div class="icon">🏥</div>
-                    <div class="name">Clinical AI</div>
-                    <div class="desc">AWaRe dosing · renal adjustment (CrCl)</div>
-                </div>
+            <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+                <span style="background:#166534;color:#bbf7d0;padding:5px 12px;border-radius:20px;font-size:0.8rem;font-weight:700;">AI Gateway</span>
+                <span style="background:#7c2d12;color:#fed7aa;padding:5px 12px;border-radius:20px;font-size:0.8rem;font-weight:700;">MCP Gateway</span>
+                <span style="background:#581c87;color:#e9d5ff;padding:5px 12px;border-radius:20px;font-size:0.8rem;font-weight:700;">Guardrails</span>
+                <span style="background:#991b1b;color:#fecaca;padding:5px 12px;border-radius:20px;font-size:0.8rem;font-weight:700;">Fallback</span>
             </div>
         </div>
         """
@@ -194,53 +112,54 @@ with gr.Blocks(title="PharmaGuard | TrueFoundry Hackathon") as demo:
 
     with gr.Row():
         with gr.Column(scale=5):
-            gr.HTML('<p class="pg-section-title">📋 Patient Clinical Query</p>')
+            gr.HTML(
+                '<p style="color:#0f172a;font-size:1.1rem;font-weight:800;margin:0 0 6px;">'
+                "Patient Clinical Query</p>"
+            )
             query_input = gr.Textbox(
-                label="",
+                label="Clinical query",
                 value=EXAMPLE_UTI,
                 lines=3,
-                show_label=False,
-                placeholder="Enter antibiotic question with patient context...",
             )
 
-            gr.HTML('<p class="pg-hint"><b>Quick examples</b> — click to load for demo video:</p>')
+            gr.HTML(
+                '<p style="color:#92400e;font-size:0.9rem;font-weight:700;margin:10px 0 6px;">'
+                "Quick examples (click button):</p>"
+            )
             with gr.Row():
-                btn_ex1 = gr.Button("🩺 UTI + CrCl 45", size="sm")
-                btn_ex2 = gr.Button("🫁 Pneumonia allergy", size="sm")
-                btn_ex3 = gr.Button("🚫 PII block test", size="sm", variant="stop")
+                btn_ex1 = gr.Button("1. UTI + CrCl 45", size="sm")
+                btn_ex2 = gr.Button("2. Pneumonia", size="sm")
+                btn_ex3 = gr.Button("3. PII block", size="sm", variant="stop")
 
-            gr.HTML('<p class="pg-section-title" style="margin-top:14px;">🎬 Resilience Demo Modes</p>')
+            gr.HTML(
+                '<p style="color:#0f172a;font-size:1.1rem;font-weight:800;margin:14px 0 6px;">'
+                "Resilience Demo Modes</p>"
+            )
             with gr.Row():
                 simulate_model_cb = gr.Checkbox(
-                    label="Simulate model failure (gateway fallback)",
+                    label="2. Model fail — first checkbox",
                     value=False,
                 )
                 simulate_tool_cb = gr.Checkbox(
-                    label="Simulate tool failure (OpenFDA down)",
+                    label="3. Tool fail — second checkbox",
                     value=False,
                 )
 
-            gr.HTML(
-                '<p class="pg-hint">'
-                "💡 <b>Video tip:</b> Run Scenario 1 with both boxes <b>unchecked</b>. "
-                "Then enable one checkbox at a time for failure demos."
-                "</p>"
-            )
-            submit_btn = gr.Button("🚀 Run PharmaGuard Agent", variant="primary", size="lg")
+            submit_btn = gr.Button("Run PharmaGuard Agent", variant="primary", size="lg")
 
         with gr.Column(scale=2):
             gr.HTML(
                 """
-                <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px;">
-                    <p style="margin:0 0 8px;font-weight:700;color:#1e40af;">📹 Demo Scenarios</p>
-                    <p style="margin:0 0 6px;color:#334155;font-size:0.85rem;">
-                        <b>1. Normal</b> — no checkboxes<br>
-                        <b>2. Model fail</b> — first checkbox<br>
-                        <b>3. Tool fail</b> — second checkbox<br>
-                        <b>4. PII block</b> — SSN example button
+                <div style="background:#fce7f3;border:3px solid #db2777;
+                            border-radius:12px;padding:16px;">
+                    <p style="color:#831843;font-size:1rem;font-weight:800;margin:0 0 10px;">
+                        Demo Scenarios
                     </p>
-                    <p style="margin:10px 0 0;color:#64748b;font-size:0.78rem;">
-                        TrueFoundry Resilient Agents Hackathon 2026
+                    <p style="color:#9d174d;font-size:0.9rem;line-height:1.7;margin:0;">
+                        <b style="color:#500724;">1. Normal</b> — no checkboxes<br>
+                        <b style="color:#500724;">2. Model fail</b> — first checkbox<br>
+                        <b style="color:#500724;">3. Tool fail</b> — second checkbox<br>
+                        <b style="color:#500724;">4. PII block</b> — PII button
                     </p>
                 </div>
                 """
@@ -248,35 +167,49 @@ with gr.Blocks(title="PharmaGuard | TrueFoundry Hackathon") as demo:
 
     with gr.Row():
         with gr.Column(scale=1):
-            gr.HTML('<div class="pg-panel-label">📊 Agent Execution Logs</div>')
+            gr.HTML(
+                '<div style="background:#065f46;color:#a7f3d0;font-weight:800;'
+                'padding:10px 14px;border-radius:8px 8px 0 0;font-size:0.95rem;">'
+                "Agent Execution Logs</div>"
+            )
             logs_output = gr.Textbox(
-                label="",
+                label="Logs",
                 lines=22,
                 max_lines=30,
-                show_label=False,
                 buttons=["copy"],
                 elem_id="pg-logs",
                 interactive=False,
-                value="Logs will appear here after you run the agent...",
+                value="Logs appear here after you click Run PharmaGuard Agent...",
             )
         with gr.Column(scale=1):
-            gr.HTML('<div class="pg-panel-label">💡 Clinical Recommendation</div>')
-            answer_output = gr.HTML(value=empty_clinical_panel())
+            gr.HTML(
+                '<div style="background:#1e40af;color:#bfdbfe;font-weight:800;'
+                'padding:10px 14px;border-radius:8px 8px 0 0;font-size:0.95rem;">'
+                "Clinical Recommendation</div>"
+            )
+            answer_output = gr.Textbox(
+                label="Clinical answer",
+                lines=22,
+                max_lines=30,
+                buttons=["copy"],
+                elem_id="pg-answer",
+                interactive=False,
+                value=empty_clinical_panel(),
+            )
 
     gr.HTML(
         """
-        <div class="pg-footer">
-            <p class="label">Architecture Flow</p>
-            <div class="pg-flow">
-                <span>Gradio UI</span> →
-                <span>Guardrails</span> →
-                <span>MCP OpenFDA</span> →
-                <span>AI Gateway</span> →
-                <span>Bedrock Nova/Llama</span> →
-                <span>Clinical Answer</span>
-            </div>
-            <p style="margin-top:12px;">
-                <b>Resilience:</b> 3 retries · priority fallback · MCP/OpenFDA degradation · AWaRe safety net
+        <div style="background:#fef9c3;border:3px solid #ca8a04;
+                    border-radius:12px;padding:16px;margin-top:14px;">
+            <p style="color:#713f12;font-size:0.85rem;font-weight:800;margin:0;
+                      text-transform:uppercase;letter-spacing:0.05em;">
+                Architecture
+            </p>
+            <p style="color:#422006;font-size:0.95rem;margin:8px 0 0;line-height:1.6;">
+                <b>Flow:</b> Gradio UI → Guardrails → MCP OpenFDA → AI Gateway → Bedrock → Clinical Answer
+            </p>
+            <p style="color:#422006;font-size:0.95rem;margin:8px 0 0;">
+                <b>Resilience:</b> retries, fallback, MCP degradation, AWaRe safety net
             </p>
         </div>
         """
@@ -293,4 +226,4 @@ with gr.Blocks(title="PharmaGuard | TrueFoundry Hackathon") as demo:
     )
 
 if __name__ == "__main__":
-    demo.launch(share=False, css=CSS, theme=gr.themes.Soft())
+    demo.launch(share=False, css=CSS, theme=gr.themes.Base())
