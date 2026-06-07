@@ -14,32 +14,79 @@ import gradio as gr
 from src.agent_core import run_pharma_agent
 from src.formatting import format_clinical_answer, empty_clinical_panel
 
+PHARMA_THEME = gr.themes.Base(primary_hue="blue").set(
+    body_background_fill="#f1f5f9",
+    body_text_color="#1e293b",
+    block_background_fill="#ffffff",
+    block_border_color="#cbd5e1",
+    block_label_text_color="#1e293b",
+    block_title_text_color="#0f2744",
+    input_background_fill="#ffffff",
+    button_primary_background_fill="#1d4ed8",
+    button_primary_text_color="#ffffff",
+)
+
 CSS = """
-/* ── Page ── */
+/* ── Page — full width / full screen ── */
+html, body {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #f1f5f9 !important;
+}
 .gradio-container {
-    max-width: 1100px !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 12px 20px 20px !important;
     background: #f1f5f9 !important;
     font-family: "Segoe UI", Inter, system-ui, sans-serif !important;
 }
+.gradio-container .wrap,
+.gradio-container .contain,
+.gradio-container main {
+    max-width: 100% !important;
+    width: 100% !important;
+}
 footer { display: none !important; }
+
+/* ── Gradio 6 form blocks — force light panels ── */
+.gradio-container .form,
+.gradio-container .form .block,
+.gradio-container .block {
+    background: #ffffff !important;
+    color: #1e293b !important;
+    border-color: #cbd5e1 !important;
+}
 
 /* ── All labels & checkbox text — force dark ── */
 .gradio-container label,
 .gradio-container label span,
 .gradio-container .label-wrap span,
+.gradio-container .label-text,
 .gradio-container .form-checkbox-label,
+.gradio-container .checkbox-container,
 .gradio-container fieldset span {
     color: #1e293b !important;
     font-weight: 600 !important;
     font-size: 0.95rem !important;
 }
 
-/* ── Checkboxes — visible box + dark label ── */
+/* ── Checkboxes — visible box + light card ── */
 .gradio-container input[type="checkbox"] {
     width: 18px !important;
     height: 18px !important;
     accent-color: #2563eb !important;
     cursor: pointer !important;
+}
+.gradio-container .checkbox-container {
+    background: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    padding: 10px 14px !important;
+    margin: 4px 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
 }
 .gradio-container .form-checkbox,
 .gradio-container .form-checkbox-label {
@@ -70,7 +117,7 @@ footer { display: none !important; }
     border: 1px solid #94a3b8 !important;
     border-top: 3px solid #059669 !important;
     border-radius: 0 0 8px 8px !important;
-    min-height: 380px !important;
+    min-height: calc(100vh - 560px) !important;
 }
 
 /* ── Clinical panel ── */
@@ -83,7 +130,7 @@ footer { display: none !important; }
     border: 1px solid #94a3b8 !important;
     border-top: 3px solid #2563eb !important;
     border-radius: 0 0 8px 8px !important;
-    min-height: 380px !important;
+    min-height: calc(100vh - 560px) !important;
     font-weight: 500 !important;
 }
 
@@ -107,11 +154,73 @@ footer { display: none !important; }
     border: 1px solid #94a3b8 !important;
     font-weight: 600 !important;
 }
+
+/* ── Four demo scenario buttons — bold colors for judges ── */
+#btn-scenario-1 {
+    background: #1d4ed8 !important;
+    color: #ffffff !important;
+    border: 2px solid #1e3a8a !important;
+    font-weight: 700 !important;
+}
+#btn-scenario-2 {
+    background: #b45309 !important;
+    color: #ffffff !important;
+    border: 2px solid #92400e !important;
+    font-weight: 700 !important;
+}
+#btn-scenario-3 {
+    background: #6d28d9 !important;
+    color: #ffffff !important;
+    border: 2px solid #5b21b6 !important;
+    font-weight: 700 !important;
+}
+#btn-scenario-4 {
+    background: #b91c1c !important;
+    color: #ffffff !important;
+    border: 2px solid #991b1b !important;
+    font-weight: 700 !important;
+}
+#btn-scenario-1:hover { background: #1e40af !important; }
+#btn-scenario-2:hover { background: #92400e !important; }
+#btn-scenario-3:hover { background: #5b21b6 !important; }
+#btn-scenario-4:hover { background: #991b1b !important; }
+
+/* ── Scenario status banner ── */
+#pg-scenario-status textarea {
+    background: #eff6ff !important;
+    color: #1e3a8a !important;
+    border: 2px solid #3b82f6 !important;
+    font-weight: 700 !important;
+    font-size: 0.95rem !important;
+    text-align: center !important;
+}
 """
 
 EXAMPLE_UTI = "Amoxicillin for UTI in 65yo patient with CrCl 45"
-EXAMPLE_PNEUMONIA = "Best antibiotic for pneumonia in penicillin-allergic patient"
 EXAMPLE_PII = "Amoxicillin for UTI, patient SSN 123-45-6789"
+
+SCENARIO_STATUS = {
+    1: "SCENARIO 1 — Normal path loaded. No failure modes. Click [Run PharmaGuard Agent].",
+    2: "SCENARIO 2 — Model failure mode ON. Gateway will failover to backup model. Click Run.",
+    3: "SCENARIO 3 — Tool failure mode ON. OpenFDA will degrade gracefully. Click Run.",
+    4: "SCENARIO 4 — PII block query loaded. Guardrails should block before model call. Click Run.",
+}
+
+
+def load_scenario_1():
+    return EXAMPLE_UTI, False, False, SCENARIO_STATUS[1]
+
+
+def load_scenario_2():
+    return EXAMPLE_UTI, True, False, SCENARIO_STATUS[2]
+
+
+def load_scenario_3():
+    return EXAMPLE_UTI, False, True, SCENARIO_STATUS[3]
+
+
+def load_scenario_4():
+    return EXAMPLE_PII, False, False, SCENARIO_STATUS[4]
 
 
 def safe_run(query: str, simulate_model_failure: bool, simulate_tool_failure: bool):
@@ -136,7 +245,11 @@ def panel_header(title: str, accent: str) -> str:
     )
 
 
-with gr.Blocks(title="PharmaGuard — TrueFoundry Hackathon") as demo:
+with gr.Blocks(
+    title="PharmaGuard — TrueFoundry Hackathon",
+    fill_width=True,
+    fill_height=True,
+) as demo:
 
     # ── HEADER ──────────────────────────────────────────────────────────
     gr.HTML("""
@@ -190,22 +303,52 @@ with gr.Blocks(title="PharmaGuard — TrueFoundry Hackathon") as demo:
             )
 
             gr.HTML("""
-            <p style="color:#475569;font-size:0.85rem;font-weight:600;
-                      margin:12px 0 6px 0;">Load example query:</p>
+            <p style="color:#0f2744;font-size:1rem;font-weight:700;
+                      margin:12px 0 10px 0;border-bottom:2px solid #3b82f6;
+                      padding-bottom:6px;display:inline-block;">
+                Demo Scenarios — Click One, Then Run
+            </p>
             """)
             with gr.Row():
-                btn_ex1 = gr.Button("Scenario 1 — Normal", size="sm")
-                btn_ex2 = gr.Button("Scenario 2 — Pneumonia", size="sm")
-                btn_ex3 = gr.Button("Scenario 4 — PII Block", size="sm", variant="stop")
+                btn_s1 = gr.Button(
+                    "1 — Normal Path",
+                    size="lg",
+                    elem_id="btn-scenario-1",
+                )
+                btn_s2 = gr.Button(
+                    "2 — Model Failure",
+                    size="lg",
+                    elem_id="btn-scenario-2",
+                )
+            with gr.Row():
+                btn_s3 = gr.Button(
+                    "3 — Tool Failure",
+                    size="lg",
+                    elem_id="btn-scenario-3",
+                )
+                btn_s4 = gr.Button(
+                    "4 — PII Block",
+                    size="lg",
+                    elem_id="btn-scenario-4",
+                )
+
+            scenario_status = gr.Textbox(
+                label="",
+                show_label=False,
+                value=SCENARIO_STATUS[1],
+                interactive=False,
+                elem_id="pg-scenario-status",
+                lines=2,
+            )
 
             gr.HTML("""
             <p style="color:#0f2744;font-size:1rem;font-weight:700;
                       margin:16px 0 8px 0;border-bottom:2px solid #3b82f6;
                       padding-bottom:6px;display:inline-block;">
-                Resilience Demo Modes
+                Active Failure Modes
             </p>
             <p style="color:#64748b;font-size:0.82rem;margin:0 0 8px 0;">
-                Enable one checkbox at a time for failure demos (Scenarios 2 &amp; 3).
+                Auto-set by scenario buttons above. Scenario 2 = model failure. Scenario 3 = tool failure.
             </p>
             """)
 
@@ -231,32 +374,32 @@ with gr.Blocks(title="PharmaGuard — TrueFoundry Hackathon") as demo:
                     Demo Scenarios for Judges
                 </p>
                 <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
-                    <tr style="background:#eff6ff;">
-                        <td style="padding:8px 10px;color:#1d4ed8;font-weight:700;
-                                   border:1px solid #bfdbfe;width:30px;">1</td>
-                        <td style="padding:8px 10px;color:#1e293b;border:1px solid #bfdbfe;">
-                            <b>Normal path</b> — no checkboxes, click Run
+                    <tr style="background:#dbeafe;">
+                        <td style="padding:8px 10px;color:#1e3a8a;font-weight:800;
+                                   border:1px solid #93c5fd;width:36px;">1</td>
+                        <td style="padding:8px 10px;color:#0f172a;border:1px solid #93c5fd;">
+                            <b style="color:#1d4ed8;">Normal path</b> — blue button, then Run
                         </td>
                     </tr>
-                    <tr>
-                        <td style="padding:8px 10px;color:#1d4ed8;font-weight:700;
-                                   border:1px solid #bfdbfe;">2</td>
-                        <td style="padding:8px 10px;color:#1e293b;border:1px solid #bfdbfe;">
-                            <b>Model failure</b> — enable first checkbox
+                    <tr style="background:#ffedd5;">
+                        <td style="padding:8px 10px;color:#9a3412;font-weight:800;
+                                   border:1px solid #fdba74;">2</td>
+                        <td style="padding:8px 10px;color:#0f172a;border:1px solid #fdba74;">
+                            <b style="color:#c2410c;">Model failure</b> — orange button, then Run
                         </td>
                     </tr>
-                    <tr style="background:#f8fafc;">
-                        <td style="padding:8px 10px;color:#1d4ed8;font-weight:700;
-                                   border:1px solid #bfdbfe;">3</td>
-                        <td style="padding:8px 10px;color:#1e293b;border:1px solid #bfdbfe;">
-                            <b>Tool failure</b> — enable second checkbox
+                    <tr style="background:#ede9fe;">
+                        <td style="padding:8px 10px;color:#5b21b6;font-weight:800;
+                                   border:1px solid #c4b5fd;">3</td>
+                        <td style="padding:8px 10px;color:#0f172a;border:1px solid #c4b5fd;">
+                            <b style="color:#6d28d9;">Tool failure</b> — purple button, then Run
                         </td>
                     </tr>
-                    <tr>
-                        <td style="padding:8px 10px;color:#1d4ed8;font-weight:700;
-                                   border:1px solid #bfdbfe;">4</td>
-                        <td style="padding:8px 10px;color:#1e293b;border:1px solid #bfdbfe;">
-                            <b>PII block</b> — click PII button, no checkboxes
+                    <tr style="background:#fee2e2;">
+                        <td style="padding:8px 10px;color:#991b1b;font-weight:800;
+                                   border:1px solid #fca5a5;">4</td>
+                        <td style="padding:8px 10px;color:#0f172a;border:1px solid #fca5a5;">
+                            <b style="color:#b91c1c;">PII block</b> — red button, then Run
                         </td>
                     </tr>
                 </table>
@@ -316,9 +459,11 @@ with gr.Blocks(title="PharmaGuard — TrueFoundry Hackathon") as demo:
     """)
 
     # ── WIRING ──────────────────────────────────────────────────────────
-    btn_ex1.click(lambda: EXAMPLE_UTI, outputs=query_input)
-    btn_ex2.click(lambda: EXAMPLE_PNEUMONIA, outputs=query_input)
-    btn_ex3.click(lambda: EXAMPLE_PII, outputs=query_input)
+    scenario_outputs = [query_input, simulate_model_cb, simulate_tool_cb, scenario_status]
+    btn_s1.click(load_scenario_1, outputs=scenario_outputs)
+    btn_s2.click(load_scenario_2, outputs=scenario_outputs)
+    btn_s3.click(load_scenario_3, outputs=scenario_outputs)
+    btn_s4.click(load_scenario_4, outputs=scenario_outputs)
 
     submit_btn.click(
         fn=safe_run,
@@ -327,4 +472,4 @@ with gr.Blocks(title="PharmaGuard — TrueFoundry Hackathon") as demo:
     )
 
 if __name__ == "__main__":
-    demo.launch(share=False, css=CSS, theme=gr.themes.Base())
+    demo.launch(share=False, css=CSS, theme=PHARMA_THEME)
