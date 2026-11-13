@@ -12,6 +12,12 @@ sys.path.insert(0, os.path.dirname(__file__))
 import gradio as gr
 
 from src.agent_core import run_pharma_agent
+from src.ecdc_surveillance import (
+    SERIES_LABELS,
+    country_choices,
+    load_surveillance_data,
+    render_trend,
+)
 from src.formatting import format_clinical_answer, empty_clinical_panel
 
 PHARMA_THEME = gr.themes.Base(primary_hue="blue").set(
@@ -245,6 +251,16 @@ def panel_header(title: str, accent: str) -> str:
     )
 
 
+SURVEILLANCE_RECORDS = load_surveillance_data()
+SURVEILLANCE_COUNTRIES = country_choices(SURVEILLANCE_RECORDS)
+DEFAULT_SURVEILLANCE_SERIES = next(iter(SERIES_LABELS))
+DEFAULT_SURVEILLANCE_COUNTRY = SURVEILLANCE_COUNTRIES[0]
+
+
+def show_ecdc_trend(series_label: str, country: str):
+    return render_trend(series_label, country, SURVEILLANCE_RECORDS)
+
+
 with gr.Blocks(
     title="PharmaGuard — TrueFoundry Hackathon",
     fill_width=True,
@@ -437,6 +453,57 @@ with gr.Blocks(
                 interactive=False,
                 value=empty_clinical_panel(),
             )
+
+    with gr.Accordion("ECDC Population Surveillance Trends — context only", open=False):
+        gr.Markdown(
+            "**Not clinical advice.** These are country-level surveillance percentages, "
+            "not a local antibiogram or patient-specific evidence. They are not passed "
+            "to the PharmaGuard recommendation agent."
+        )
+        with gr.Row():
+            surveillance_series = gr.Dropdown(
+                label="Pathogen and resistance group",
+                choices=list(SERIES_LABELS),
+                value=DEFAULT_SURVEILLANCE_SERIES,
+            )
+            surveillance_country = gr.Dropdown(
+                label="Country",
+                choices=SURVEILLANCE_COUNTRIES,
+                value=DEFAULT_SURVEILLANCE_COUNTRY,
+            )
+            show_surveillance = gr.Button("Show trend", variant="secondary")
+        initial_trend, initial_trend_status = show_ecdc_trend(
+            DEFAULT_SURVEILLANCE_SERIES,
+            DEFAULT_SURVEILLANCE_COUNTRY,
+        )
+        surveillance_table = gr.Dataframe(
+            value=initial_trend,
+            headers=["Year", "Resistant isolates (%)"],
+            datatype=["number", "number"],
+            type="array",
+            interactive=False,
+            label="Annual ECDC observations",
+        )
+        surveillance_status = gr.Textbox(
+            value=initial_trend_status,
+            label="",
+            show_label=False,
+            interactive=False,
+        )
+        gr.Markdown(
+            "Source: [ECDC EARS-Net Surveillance Atlas](https://atlas.ecdc.europa.eu/). "
+            "Dataset provided by ECDC based on data provided by public health authorities, "
+            "scientific institutes or health care providers in the relevant reporting "
+            "countries and/or by WHO. This snapshot was modified by retaining five "
+            "single-class series, dropping unreported values, and rounding to two decimals. "
+            "Available data runs through 2025; export retrieval date was not supplied. "
+            "See `docs/ECDC_SURVEILLANCE.md` in the repository for provenance and updates."
+        )
+        show_surveillance.click(
+            fn=show_ecdc_trend,
+            inputs=[surveillance_series, surveillance_country],
+            outputs=[surveillance_table, surveillance_status],
+        )
 
     # ── FOOTER — dark bg, light text (high contrast) ────────────────────
     gr.HTML("""
