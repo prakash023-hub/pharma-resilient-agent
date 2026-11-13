@@ -95,6 +95,15 @@ Amoxicillin for UTI in 65yo patient with CrCl 45
 Amoxicillin for UTI, patient SSN 123-45-6789
 ```
 
+## ECDC surveillance trends
+
+The app includes a separate, read-only view of aggregate ECDC antimicrobial-resistance
+trends. This country-level data is contextual only: it is not local antibiogram or
+patient-level evidence, does not flow into the clinical recommendation agent, and must
+not be used to select treatment for an individual. See
+[docs/ECDC_SURVEILLANCE.md](docs/ECDC_SURVEILLANCE.md) for attribution, snapshot limits,
+and update instructions.
+
 ## Project structure
 
 ```
@@ -103,8 +112,10 @@ Amoxicillin for UTI, patient SSN 123-45-6789
 │   ├── agent_core.py     # Agent orchestration
 │   ├── gateway.py        # AI Gateway client
 │   ├── mcp_tools.py      # MCP + OpenFDA fallback
+│   ├── ecdc_surveillance.py # Read-only aggregate ECDC trend data
 │   ├── guardrails.py     # Safety checks
 │   └── formatting.py     # UI formatting
+├── data/                 # Curated aggregate ECDC snapshot
 ├── mcp_server/           # Optional local MCP server
 ├── docs/                 # Submission + demo guides
 └── scripts/              # Setup verification
